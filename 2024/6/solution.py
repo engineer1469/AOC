@@ -1,4 +1,5 @@
 import time
+from concurrent.futures import ProcessPoolExecutor
 
 def digest():
     with open('2024/6/input.txt') as f:
@@ -20,14 +21,15 @@ def countPath(pathArray):
     return count
 
 def part1(data):
-    count = 0
-    location = [0, 0]  # [y, x]
-    direction = [-1, 0]  # [dy, dx] facing up
     data = [list(line) for line in data]
     pathArray = [list(line) for line in data]
-    visited_positions = []  # Store all visited (y, x) positions
 
+    location = [0, 0]  # [y, x]
+    direction = [-1, 0]  # facing up
+    visited_positions = []
     start_found = False
+
+    # Find the '^' position
     for y in range(len(data)):
         for x in range(len(data[y])):
             if data[y][x] == '^':
@@ -57,26 +59,14 @@ def part1(data):
             pathArray[ny][nx] = 'X'
             visited_positions.append((ny, nx))
 
-
-def test_for_loop(data):
-    grid = [row[:] for row in data]
-
-    # Find the guard start position '^'
-    start_y, start_x = None, None
-    for y in range(len(grid)):
-        for x in range(len(grid[y])):
-            if grid[y][x] == '^':
-                start_y, start_x = y, x
-                grid[y][x] = '.'
-                break
-        if start_y is not None:
-            break
-
-    # Initial direction is up: (dy, dx) = (-1, 0)
-    direction = [-1, 0]
+def test_for_loop(data, start_y, start_x, obst_y=None, obst_x=None):
     y, x = start_y, start_x
-
+    direction = [-1, 0]  # facing up
     visited_states = set()  # set of (y, x, dy, dx)
+
+    rows = len(data)
+    cols = len(data[0])
+
     while True:
         state = (y, x, direction[0], direction[1])
         if state in visited_states:
@@ -87,31 +77,41 @@ def test_for_loop(data):
         ny = y + direction[0]
         nx = x + direction[1]
 
-        if nx < 0 or nx >= len(grid[0]) or ny < 0 or ny >= len(grid):
+        # Check bounds
+        if nx < 0 or nx >= cols or ny < 0 or ny >= rows:
             return False
 
-        if grid[ny][nx] == '#':
+        # Determine what is at the next cell
+        # If it's the obstruction cell, treat as '#', else use data
+        cell = '#'
+        if not (obst_y == ny and obst_x == nx):
+            cell = data[ny][nx]
+
+        if cell == '#':
+            # Rotate direction right
             direction = [direction[1], -direction[0]]
         else:
+            # Move forward
             y, x = ny, nx
 
+def check_obstruction(args):
+    vy, vx, data, start_y, start_x = args
+    # Test with obstruction at (vy, vx)
+    return test_for_loop(data, start_y, start_x, obst_y=vy, obst_x=vx)
 
 def part2(data):
     result, visited_positions = part1(data)
     start_y, start_x = visited_positions[0]
+
     unique_positions = set(visited_positions[1:])
+    tasks = [(vy, vx, data, start_y, start_x) for (vy, vx) in unique_positions
+             if (vy, vx) != (start_y, start_x)]
+
     loop_count = 0
-    original_data = [row[:] for row in data]
-
-    for (vy, vx) in unique_positions:
-        if (vy, vx) == (start_y, start_x):
-            continue
-
-        modified_data = [row[:] for row in original_data]
-        modified_data[vy][vx] = '#'
-
-        if test_for_loop(modified_data):
-            loop_count += 1
+    with ProcessPoolExecutor() as executor:
+        for is_loop in executor.map(check_obstruction, tasks):
+            if is_loop:
+                loop_count += 1
 
     return loop_count
 
