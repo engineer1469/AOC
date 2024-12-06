@@ -71,8 +71,7 @@ def part2(rules, incorrect):
         return total
     else:
         return total+part2(rules, incorrect)
-        
-            
+
 def main():
     rules = digestRules()
     updates = digestUpdates()
