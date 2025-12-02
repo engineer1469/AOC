@@ -16,14 +16,13 @@ def isInvalid(num):
 
 def isInvalid2(num):
     s = str(num)
-    substrings = getSubstrings(num)
-    for sub in substrings: # check if the number can be formed by repeating a substring at least twice
-        sub_len = len(sub)
-        if sub_len == 0 or len(s) % sub_len != 0:
-            continue
-        times = len(s) // sub_len
-        if sub * times == s and times >= 2:
-            return True
+    length = len(s)
+    # Only check substring lengths that divide evenly into the string length
+    for sub_len in range(1, length):
+        if length % sub_len == 0:
+            sub = s[:sub_len]
+            if sub * (length // sub_len) == s:
+                return True
     return False
 
 def sumInvalidInRange(begin, end):
@@ -46,15 +45,6 @@ def part1(data):
         total_invalid += sumInvalidInRange(begin, end)
     return total_invalid
 
-
-def getSubstrings(num):
-    s = str(num)
-    length = len(s)
-    substrings = set()
-    for i in range(length):
-        for j in range(i + 1, length + 1):
-            substrings.add(s[i:j])
-    return substrings
 
 def part2(data):
     total_invalid = 0
